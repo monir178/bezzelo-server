@@ -33,13 +33,13 @@ try {
 
 async function run() {
     try {
-        const bagCollection = client.db('bezzelo').collection('bags');
-        const foodCollection = client.db('bezzelo').collection('foods');
+        const productCollection = client.db('bezzelo').collection('products');
+
         const reviewCollection = client.db('bezzelo').collection('reviews');
+
         const categoryCollection = client.db('bezzelo').collection('categories');
+
         const usersCollection = client.db('bezzelo').collection('users');
-
-
 
 
 
@@ -102,35 +102,43 @@ async function run() {
             }
         })
 
-        //get product by category
-        // Route handler for /categories/:id
-        app.get('/categories/:id', (req, res) => {
-            const id = req.params.id;
+        app.get('/categories/:id', async (req, res) => {
 
-            if (id === '1') {
-                // Redirect to /allbags
-                res.redirect('/allbags');
-            } else {
-                res.send(`Category ID ${id}`);
-            }
-        });
-
-
-        //for adding bag
-        app.post('/bags', async (req, res) => {
             try {
-                const result = await bagCollection.insertOne(req.body);
+                const categoryId = parseInt(req.params.id);
+                const query = { category_id: categoryId };
+                const categoryProducts = await productCollection.find(query).toArray();
+                res.send({
+                    success: true,
+                    message: 'Successfully got the category products',
+                    data: categoryProducts,
+                })
+
+            } catch (error) {
+                console.error('Error occurred while fetching products by category ID', error);
+                res.status(500).send({
+                    success: false,
+                    error: error.message,
+                });
+            }
+
+        })
+
+        //for adding product
+        app.post('/products', async (req, res) => {
+            try {
+                const result = await productCollection.insertOne(req.body);
                 // console.log("result from 33", result);
                 if (result.insertedId) {
                     res.send({
                         success: true,
-                        message: "Successfully added your bag",
+                        message: "Successfully added your product",
 
                     });
                 } else {
                     res.send({
                         success: false,
-                        error: "Couldn't add the bag"
+                        error: "Couldn't add the product"
                     });
                 };
             }
@@ -143,17 +151,17 @@ async function run() {
             }
         });
 
-        //get all bags from mongodb
-        app.get('/allbags', async (req, res) => {
+        //get all products from mongodb
+        app.get('/allproducts', async (req, res) => {
             try {
                 const query = {};
-                const cursor = bagCollection.find(query);
-                const allbags = await cursor.toArray();
+                const cursor = productCollection.find(query);
+                const allproducts = await cursor.toArray();
 
                 res.send({
                     success: true,
                     message: "Successfully got the data",
-                    data: allbags,
+                    data: allproducts,
                 })
             }
             catch (error) {
@@ -165,17 +173,17 @@ async function run() {
             }
         })
 
-        //limit bags
-        app.get('/bags', async (req, res) => {
+        //limit products
+        app.get('/products', async (req, res) => {
             try {
                 const query = {};
-                const cursor = bagCollection.find(query);
-                const bags = await cursor.limit(3).toArray();
+                const cursor = productCollection.find(query);
+                const products = await cursor.limit(3).toArray();
 
                 res.send({
                     success: true,
                     message: "Successfully got the data",
-                    data: bags,
+                    data: products,
                 });
             }
             catch (error) {
@@ -187,17 +195,17 @@ async function run() {
             }
         })
 
-        // get single bag
-        app.get('/bag/:id', async (req, res) => {
+        // get single product
+        app.get('/product/:id', async (req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) }
-                const bagDetails = await bagCollection.findOne(query);
-                console.log(bagDetails);
+                const productDetails = await productCollection.findOne(query);
+                console.log(productDetails);
                 res.send({
                     success: true,
                     message: "Successfully got the data",
-                    data: bagDetails,
+                    data: productDetails,
                 })
             }
             catch (error) {
@@ -210,11 +218,11 @@ async function run() {
 
         })
 
-        // Edit bag 
-        app.patch('/bags/:id', async (req, res) => {
+        // Edit product 
+        app.patch('/products/:id', async (req, res) => {
             const id = req.params.id;
             try {
-                const result = await bagCollection.updateOne({ _id: new ObjectId(id) }, { $set: req.body });
+                const result = await productCollection.updateOne({ _id: new ObjectId(id) }, { $set: req.body });
                 if (result.matchedCount) {
                     res.send({
                         success: true,
@@ -223,7 +231,7 @@ async function run() {
                 } else {
                     res.send({
                         success: false,
-                        error: "Couldn't update the bag",
+                        error: "Couldn't update the product",
                     });
                 }
             } catch (error) {
@@ -235,11 +243,11 @@ async function run() {
             }
         });
 
-        //delete bag
-        app.delete('/bags/:id', async (req, res) => {
+        //delete product
+        app.delete('/products/:id', async (req, res) => {
             const id = req.params.id;
             try {
-                const result = await bagCollection.deleteOne({ _id: new ObjectId(id) });
+                const result = await productCollection.deleteOne({ _id: new ObjectId(id) });
                 if (result.deletedCount) {
                     res.send({
                         success: true,
@@ -260,79 +268,6 @@ async function run() {
             }
         });
 
-        //for adding food
-        app.post('/foods', async (req, res) => {
-            try {
-                const result = await foodCollection.insertOne(req.body);
-                // console.log("result from 33", result);
-                if (result.insertedId) {
-                    res.send({
-                        success: true,
-                        message: "Successfully added your food",
-
-                    });
-                } else {
-                    res.send({
-                        success: false,
-                        error: "Couldn't add the food"
-                    });
-                };
-            }
-            catch (error) {
-                console.log(error.name, error.message)
-                res.send({
-                    success: false,
-                    error: error.message,
-                });
-            }
-        });
-
-        //delete food
-        app.delete('/foods/:id', async (req, res) => {
-            const id = req.params.id;
-            try {
-                const result = await foodCollection.deleteOne({ _id: new ObjectId(id) });
-                if (result.deletedCount) {
-                    res.send({
-                        success: true,
-                        message: 'Food deleted successfully',
-                    });
-                } else {
-                    res.send({
-                        success: false,
-                        error: "Couldn't delete the Food",
-                    });
-                }
-            } catch (error) {
-                console.error(error.name, error.message);
-                res.send({
-                    success: false,
-                    error: error.message,
-                });
-            }
-        });
-
-        //get all foods from mongodb
-        app.get('/allfoods', async (req, res) => {
-            try {
-                const query = {};
-                const cursor = foodCollection.find(query);
-                const allfoods = await cursor.toArray();
-
-                res.send({
-                    success: true,
-                    message: "Successfully got the data",
-                    data: allfoods,
-                })
-            }
-            catch (error) {
-                console.log(error.name, error.message);
-                res.send({
-                    success: false,
-                    error: error.message,
-                });
-            }
-        })
 
         //for adding review
         app.post('/reviews', async (req, res) => {
@@ -366,7 +301,7 @@ async function run() {
             try {
                 const id = req.params.id;
                 console.log(id);
-                const query = { bag_id: id }
+                const query = { product_id: id }
                 const singleReview = await reviewCollection.find(query).toArray();
                 console.log(singleReview);
                 res.send({
