@@ -1,14 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
+
+
 const app = express();
 const port = process.env.PORT || 5000;
 
 //middle wares
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'))
+
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ulnoerh.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -42,6 +46,22 @@ async function run() {
         const usersCollection = client.db('bezzelo').collection('users');
 
 
+        app.get('/jwt', async (req, res) => {
+            const { email } = req.query;
+            if (!email) {
+                return res.status(400).json({ error: 'Email is required' });
+            }
+
+            const usersCollection = client.db('bezzelo').collection('users');
+            const user = await usersCollection.findOne({ email });
+
+            if (user) {
+                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '15d' });
+                return res.json({ accessToken: token });
+            } else {
+                return res.status(404).json({ error: 'User not found' });
+            }
+        });
 
         //get all users
         app.get('/users', async (req, res) => {
@@ -52,12 +72,25 @@ async function run() {
 
         //create user and save their data in mongodb
         app.post('/users', async (req, res) => {
-            const user = req.body;
-            console.log(user);
-            const result = await usersCollection.insertOne(user);
-            res.send(result);
+            try {
+                const user = req.body;
+                const existingUser = await usersCollection.findOne({ email: user.email });
 
+                if (existingUser) {
+
+                    return res.status(409).json({ message: 'User already exists' });
+                } else {
+
+                    const result = await usersCollection.insertOne(user);
+                    return res.status(201).json({ message: 'User created successfully' });
+                }
+            } catch (error) {
+                console.error('Error saving user to database:', error);
+                return res.status(500).json({ message: 'Internal server error' });
+            }
         });
+
+
 
         // make a user admin
         app.put('/users/admin/:id', async (req, res) => {
