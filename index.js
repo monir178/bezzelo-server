@@ -45,6 +45,9 @@ async function run() {
 
         const usersCollection = client.db('bezzelo').collection('users');
 
+        // Cart collection
+        const cartCollection = client.db('bezzelo').collection('cart');
+
 
         app.get('/jwt', async (req, res) => {
             const { email } = req.query;
@@ -112,6 +115,60 @@ async function run() {
             const result = await usersCollection.updateOne(filter, updatedDoc, options)
             res.send(result);
         })
+
+
+        // Add item to cart
+        app.post('/cart', async (req, res) => {
+            try {
+                const cartItem = req.body;
+                const result = await cartCollection.insertOne(cartItem);
+                res.status(201).json({ message: 'Item added to cart successfully' });
+            } catch (error) {
+                console.error('Error adding item to cart:', error);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+        });
+
+        // Update item quantity in cart
+        app.put('/cart/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { quantity } = req.body;
+                const filter = { _id: new ObjectId(id) };
+                const updateDoc = { $set: { quantity } };
+                const result = await cartCollection.updateOne(filter, updateDoc);
+                res.json({ message: 'Cart item updated successfully' });
+            } catch (error) {
+                console.error('Error updating cart item:', error);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+        });
+
+        // Remove item from cart
+        app.delete('/cart/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const filter = { _id: new ObjectId(id) };
+                const result = await cartCollection.deleteOne(filter);
+                res.json({ message: 'Item removed from cart successfully' });
+            } catch (error) {
+                console.error('Error removing item from cart:', error);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+        });
+
+        // Get cart items for a user
+        app.get('/cart/:userId', async (req, res) => {
+            try {
+                const userId = req.params.userId;
+                const query = { userId };
+                const cartItems = await cartCollection.find(query).toArray();
+                res.json(cartItems);
+            } catch (error) {
+                console.error('Error getting cart items:', error);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+        });
 
         //get all category
         app.get('/categories', async (req, res) => {
