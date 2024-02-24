@@ -73,25 +73,28 @@ async function run() {
             res.send(users);
         });
 
-        //create user and save their data in mongodb
         app.post('/users', async (req, res) => {
             try {
                 const user = req.body;
                 const existingUser = await usersCollection.findOne({ email: user.email });
 
                 if (existingUser) {
-
                     return res.status(409).json({ message: 'User already exists' });
                 } else {
-
                     const result = await usersCollection.insertOne(user);
                     return res.status(201).json({ message: 'User created successfully' });
                 }
             } catch (error) {
-                console.error('Error saving user to database:', error);
-                return res.status(500).json({ message: 'Internal server error' });
+                // Check if the error is due to duplicate key (user already exists)
+                if (error.code === 11000) {
+                    return res.status(409).json({ message: 'User already exists' });
+                } else {
+                    console.error('Error saving user to database:', error);
+                    return res.status(500).json({ message: 'Internal server error' });
+                }
             }
         });
+
 
 
 
